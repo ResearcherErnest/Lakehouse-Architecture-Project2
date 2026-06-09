@@ -1,0 +1,20 @@
+project_name        = "ecom-lakehouse"
+aws_region          = "us-east-1"
+aws_account_id      = "REPLACE_WITH_YOUR_ACCOUNT_ID"
+
+# VPC
+vpc_cidr             = "10.0.0.0/16"
+availability_zones   = ["us-east-1a", "us-east-1b", "us-east-1c"]
+private_subnet_cidrs = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+
+# Glue — G.1X + 2 workers is sufficient for the lab dataset (500 orders, 2768 items)
+glue_worker_type = "G.1X"
+glue_num_workers = 2
+
+# Observability
+log_retention_days = 30
+monthly_budget_usd = 500
+sns_alert_email    = ""
+
+# Pipeline schedule — 06:00 UTC daily
+schedule_expression = "cron(0 6 * * ? *)"

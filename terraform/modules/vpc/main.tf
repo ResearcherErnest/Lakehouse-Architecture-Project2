@@ -30,7 +30,7 @@ resource "aws_subnet" "private" {
 
 resource "aws_security_group" "glue" {
   name        = "${var.project_name}-glue-sg"
-  description = "Security group for AWS Glue jobs — self-referencing egress only"
+  description = "Security group for AWS Glue jobs - self-referencing egress only"
   vpc_id      = aws_vpc.main.id
 
   tags = merge(var.tags, { Name = "${var.project_name}-glue-sg" })

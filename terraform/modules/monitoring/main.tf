@@ -100,6 +100,7 @@ resource "aws_cloudwatch_dashboard" "lakehouse" {
         properties = {
           title  = "Pipeline Executions (7d)"
           view   = "timeSeries"
+          region = var.aws_region
           period = 86400
           metrics = [
             ["AWS/States", "ExecutionsStarted", "StateMachineArn", "arn:aws:states:${var.aws_region}:${var.aws_account_id}:stateMachine:${var.state_machine_name}", { label = "Started" }],
@@ -117,6 +118,7 @@ resource "aws_cloudwatch_dashboard" "lakehouse" {
         properties = {
           title  = "Pipeline Execution Duration p99 (ms)"
           view   = "timeSeries"
+          region = var.aws_region
           period = 86400
           metrics = [
             ["AWS/States", "ExecutionTime", "StateMachineArn", "arn:aws:states:${var.aws_region}:${var.aws_account_id}:stateMachine:${var.state_machine_name}", { stat = "p99", label = "p99 Duration" }]
@@ -132,6 +134,7 @@ resource "aws_cloudwatch_dashboard" "lakehouse" {
         properties = {
           title   = "Lakehouse S3 Storage (bytes)"
           view    = "timeSeries"
+          region  = var.aws_region
           period  = 86400
           metrics = [
             ["AWS/S3", "BucketSizeBytes", "BucketName", var.lakehouse_bucket_name, "StorageType", "StandardStorage", { label = "Total Lakehouse" }]
@@ -147,6 +150,7 @@ resource "aws_cloudwatch_dashboard" "lakehouse" {
         properties = {
           title  = "Athena Data Scanned (bytes)"
           view   = "timeSeries"
+          region = var.aws_region
           period = 86400
           metrics = [
             ["AWS/Athena", "DataScannedInBytes", "WorkGroup", "${var.project_name}-primary", { label = "Primary WG", stat = "Sum" }],
@@ -163,6 +167,7 @@ resource "aws_cloudwatch_dashboard" "lakehouse" {
         properties = {
           title  = "Athena Query Count"
           view   = "timeSeries"
+          region = var.aws_region
           period = 86400
           metrics = [
             ["AWS/Athena", "TotalExecutionTime", "WorkGroup", "${var.project_name}-primary", { stat = "SampleCount", label = "Primary queries" }],

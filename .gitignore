@@ -15,6 +15,11 @@ crash.*.log
 # Terraform sensitive vars
 *.tfvars
 !terraform.tfvars.example
+backend.hcl
+
+# Terraform plan files (binary, generated locally)
+*.tfplan
+tfplan
 
 # AWS credentials
 .aws/

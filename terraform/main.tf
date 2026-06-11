@@ -141,7 +141,15 @@ module "monitoring" {
   project_name          = var.project_name
   aws_region            = var.aws_region
   aws_account_id        = var.aws_account_id
-  glue_job_names        = module.glue.job_names
+  glue_job_names = {
+    raw_to_bronze            = "${var.project_name}-raw-to-bronze"
+    products_silver          = "${var.project_name}-products-silver"
+    orders_silver            = "${var.project_name}-orders-silver"
+    order_items_silver       = "${var.project_name}-order-items-silver"
+    daily_revenue_gold       = "${var.project_name}-daily-revenue-gold"
+    product_performance_gold = "${var.project_name}-product-performance-gold"
+    customer_orders_gold     = "${var.project_name}-customer-orders-gold"
+  }
   state_machine_name    = module.step_functions.state_machine_name
   sns_topic_arn         = module.step_functions.sns_topic_arn
   lakehouse_bucket_name = module.storage.lakehouse_bucket_name

@@ -30,7 +30,7 @@ resource "aws_cloudwatch_log_group" "step_functions" {
 resource "aws_sfn_state_machine" "pipeline" {
   name     = "${var.project_name}-pipeline"
   role_arn = var.step_functions_role_arn
-  type     = "EXPRESS"
+  type     = "STANDARD"
 
   definition = templatefile("${path.module}/state_machine.json.tpl", {
     raw_to_bronze_job          = var.glue_job_names["raw_to_bronze"]

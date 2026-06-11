@@ -33,57 +33,6 @@
           "ResultPath": "$.error"
         }
       ],
-      "Next": "RunBronzeCrawlers"
-    },
-
-    "RunBronzeCrawlers": {
-      "Type": "Parallel",
-      "Branches": [
-        {
-          "StartAt": "CrawlBronzeProducts",
-          "States": {
-            "CrawlBronzeProducts": {
-              "Type": "Task",
-              "Resource": "arn:aws:states:::glue:startCrawler.sync",
-              "Parameters": { "Name": "${products_bronze_crawler}" },
-              "ResultPath": null,
-              "End": true
-            }
-          }
-        },
-        {
-          "StartAt": "CrawlBronzeOrders",
-          "States": {
-            "CrawlBronzeOrders": {
-              "Type": "Task",
-              "Resource": "arn:aws:states:::glue:startCrawler.sync",
-              "Parameters": { "Name": "${orders_bronze_crawler}" },
-              "ResultPath": null,
-              "End": true
-            }
-          }
-        },
-        {
-          "StartAt": "CrawlBronzeOrderItems",
-          "States": {
-            "CrawlBronzeOrderItems": {
-              "Type": "Task",
-              "Resource": "arn:aws:states:::glue:startCrawler.sync",
-              "Parameters": { "Name": "${order_items_bronze_crawler}" },
-              "ResultPath": null,
-              "End": true
-            }
-          }
-        }
-      ],
-      "Catch": [
-        {
-          "ErrorEquals": ["States.ALL"],
-          "Next": "NotifyFailure",
-          "ResultPath": "$.error"
-        }
-      ],
-      "ResultPath": null,
       "Next": "BronzeToSilverTransforms"
     },
 
@@ -278,7 +227,7 @@
           "execution_id.$": "$$.Execution.Id",
           "error.$": "$.error"
         },
-        "Subject": "Lakehouse pipeline FAILED — action required"
+        "Subject": "Lakehouse pipeline FAILED - action required"
       },
       "ResultPath": null,
       "Next": "PipelineFailed"

@@ -2,7 +2,7 @@
 
 resource "aws_iam_role" "glue_execution" {
   name        = "${var.project_name}-glue-execution"
-  description = "Assumed by AWS Glue ETL jobs — read/write lakehouse and assets buckets"
+  description = "Assumed by AWS Glue ETL jobs - read/write lakehouse and assets buckets"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -178,7 +178,7 @@ resource "aws_iam_role_policy_attachment" "glue_execution" {
 
 resource "aws_iam_role" "glue_crawler" {
   name        = "${var.project_name}-glue-crawler"
-  description = "Assumed by Glue crawlers — read S3, write Glue catalog"
+  description = "Assumed by Glue crawlers - read S3, write Glue catalog"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -257,7 +257,7 @@ resource "aws_iam_role_policy_attachment" "glue_crawler" {
 
 resource "aws_iam_role" "step_functions" {
   name        = "${var.project_name}-step-functions"
-  description = "Assumed by Step Functions state machine — start Glue jobs and crawlers"
+  description = "Assumed by Step Functions state machine - start Glue jobs and crawlers"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -268,7 +268,9 @@ resource "aws_iam_role" "step_functions" {
       Condition = {
         StringEquals = {
           "aws:SourceAccount" = var.aws_account_id
-          "aws:SourceRegion"  = var.aws_region
+        }
+        ArnLike = {
+          "aws:SourceArn" = "arn:aws:states:${var.aws_region}:${var.aws_account_id}:stateMachine:*"
         }
       }
     }]

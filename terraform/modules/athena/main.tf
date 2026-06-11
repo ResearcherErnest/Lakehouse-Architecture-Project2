@@ -29,7 +29,7 @@ resource "aws_athena_workgroup" "primary" {
 
 resource "aws_athena_workgroup" "engineering" {
   name        = "${var.project_name}-engineering"
-  description = "Workgroup for data engineers — access to bronze, silver, and gold layers"
+  description = "Workgroup for data engineers - access to bronze, silver, and gold layers"
   state       = "ENABLED"
 
   configuration {
@@ -99,7 +99,7 @@ resource "aws_athena_named_query" "customer_lifetime_value" {
   name        = "${var.project_name}-customer-lifetime-value"
   workgroup   = aws_athena_workgroup.primary.name
   database    = var.gold_database_name
-  description = "Customer lifetime value distribution — top 100 by lifetime value"
+  description = "Customer lifetime value distribution - top 100 by lifetime value"
 
   query = <<-SQL
     SELECT
@@ -120,7 +120,7 @@ resource "aws_athena_named_query" "silver_data_quality_check" {
   name        = "${var.project_name}-silver-data-quality-check"
   workgroup   = aws_athena_workgroup.engineering.name
   database    = var.silver_database_name
-  description = "Quick data quality check on Silver orders — null counts and date range"
+  description = "Quick data quality check on Silver orders - null counts and date range"
 
   query = <<-SQL
     SELECT

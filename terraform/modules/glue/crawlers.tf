@@ -50,10 +50,6 @@ resource "aws_glue_crawler" "medallion" {
     delete_behavior = "LOG"
   }
 
-  recrawl_policy {
-    recrawl_behavior = "CRAWL_NEW_FOLDERS_ONLY"
-  }
-
   configuration = jsonencode({
     Version = 1.0
     Grouping = {

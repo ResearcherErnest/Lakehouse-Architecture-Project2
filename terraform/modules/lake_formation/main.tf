@@ -2,12 +2,17 @@
 # Sets the LF service role and data lake admins.
 # The Glue execution role is also added as an admin so it can register
 # partitions and manage table metadata without a separate LF grant.
+# The current Terraform caller must also be in the list — aws_lakeformation_data_lake_settings
+# REPLACES the entire admin list, so omitting the caller locks it out of subsequent LF grants.
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_lakeformation_data_lake_settings" "main" {
   admins = [
     "arn:aws:iam::${var.aws_account_id}:root",
     var.lake_formation_role_arn,
     var.glue_execution_role_arn,
+    data.aws_caller_identity.current.arn,
   ]
 
   # Allow external data filtering (row/column security)

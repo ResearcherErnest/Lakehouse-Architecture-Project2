@@ -4,13 +4,12 @@
 
 A production-grade **Lakehouse** for an e-commerce platform on AWS. Raw transactional CSVs land in S3, flow through a **Bronze → Silver → Gold** medallion pipeline powered by Delta Lake on AWS Glue, and surface as analytics-ready tables in Amazon Athena. The entire stack is provisioned with Terraform (10 modules) and deployed via GitHub Actions CI/CD.
 
----
 
 ## Architecture
 
 ### High-Level Data Flow
 
-![Architecture Diagram](docs/images/architecture.svg)
+![Architecture Diagram](docs/images/architecture.png)
 
 > All components run inside a private VPC across 3 Availability Zones with 5 VPC Endpoints for secure, resilient, and cost-effective operations.
 

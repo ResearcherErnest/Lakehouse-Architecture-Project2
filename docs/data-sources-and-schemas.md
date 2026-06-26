@@ -4,6 +4,38 @@
 
 Three CSV files are dropped into `s3://<raw-bucket>/uploads/` to trigger the pipeline.
 
+```mermaid
+erDiagram
+    PRODUCTS {
+        int product_id PK
+        int department_id
+        string department
+        string product_name
+    }
+    ORDERS {
+        long order_id PK
+        int order_num
+        long user_id
+        timestamp order_timestamp
+        decimal total_amount
+        date date
+    }
+    ORDER_ITEMS {
+        long id PK
+        long order_id FK
+        long user_id
+        int product_id FK
+        int days_since_prior_order
+        int add_to_cart_order
+        int reordered
+        timestamp order_timestamp
+        date date
+    }
+
+    ORDERS ||--o{ ORDER_ITEMS : "contains"
+    PRODUCTS ||--o{ ORDER_ITEMS : "line items reference"
+```
+
 ### products.csv
 
 | Field | Type | Description |
@@ -37,6 +69,54 @@ Three CSV files are dropped into `s3://<raw-bucket>/uploads/` to trigger the pip
 | `reordered` | Integer | 1 if previously purchased, 0 otherwise |
 | `order_timestamp` | Timestamp | Time of order |
 | `date` | Date | Order date |
+
+---
+
+## Data Lineage
+
+```mermaid
+flowchart LR
+    subgraph RAW["Raw CSVs — S3 /uploads"]
+        CSV1["products.csv\n1,000 rows · 4 columns"]
+        CSV2["orders_apr_2025.csv\n500 rows · 6 columns"]
+        CSV3["order_items_apr_2025.csv\n2,768 rows · 9 columns"]
+    end
+
+    subgraph BRZ["Bronze — Delta Lake"]
+        B1["bronze.products\n+4 system columns\npartition: _source_partition_date"]
+        B2["bronze.orders\n+4 system columns\npartition: _source_partition_date"]
+        B3["bronze.order_items\n+4 system columns\npartition: _source_partition_date"]
+    end
+
+    subgraph SLV["Silver — Delta Lake"]
+        S1["silver.products\nSCD Type 2 + hash\npartition: department"]
+        S2["silver.orders\nDedup + typed + derived cols\npartition: year / month"]
+        S3["silver.order_items\nDQ + RI enforced\npartition: year / month"]
+    end
+
+    subgraph GLD["Gold — Delta Lake"]
+        G1["gold.daily_revenue\nRevenue KPIs by date + dept\npartition: year / month"]
+        G2["gold.product_performance\nUnits sold + dept rank\npartition: year / month"]
+        G3["gold.customer_orders\nLifetime value snapshot\npartition: year / month"]
+    end
+
+    CSV1 -->|"raw_to_bronze"| B1
+    CSV2 -->|"raw_to_bronze"| B2
+    CSV3 -->|"raw_to_bronze"| B3
+
+    B1 -->|"products_silver"| S1
+    B2 -->|"orders_silver"| S2
+    B3 -->|"order_items_silver"| S3
+
+    S1 -->|"dept lookup"| G1
+    S2 -->|"amounts"| G1
+    S3 -->|"line items"| G1
+
+    S1 -->|"product names"| G2
+    S3 -->|"units sold"| G2
+
+    S2 -->|"full history"| G3
+```
 
 ---
 

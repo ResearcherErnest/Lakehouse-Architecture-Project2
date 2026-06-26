@@ -2,6 +2,48 @@
 
 All scripts live under `glue_scripts/` and are uploaded to the Glue assets S3 bucket during deployment. The shared utility library is packaged as `utils.zip` and attached to every job.
 
+## Script Dependency Graph
+
+```mermaid
+flowchart TD
+    UTILS["delta_utils.py\nShared PySpark + Delta Lake library"]
+
+    subgraph LAYER1["① Ingestion"]
+        R2B["raw_to_bronze.py\nCSV → Bronze Delta\nGlue bookmarks · partitioned by date"]
+    end
+
+    subgraph LAYER2["② Bronze → Silver  —  Parallel"]
+        PS["products_silver.py\nSCD Type 2 merge\nOPTIMIZE after write"]
+        OS["orders_silver.py\nDedup · type cast\nreplaceWhere partition"]
+        OIS["order_items_silver.py\nDQ + referential integrity\nreplaceWhere partition"]
+    end
+
+    subgraph LAYER3["③ Silver → Gold  —  Parallel"]
+        DRG["daily_revenue_gold.py\nRevenue KPIs\nupsert_to_delta"]
+        PPG["product_performance_gold.py\nRank by dept\nreplaceWhere partition"]
+        COG["customer_orders_gold.py\nLifetime value\nFull history scan"]
+    end
+
+    UTILS -->|"imported by"| R2B
+    UTILS -->|"imported by"| PS & OS & OIS
+    UTILS -->|"imported by"| DRG & PPG & COG
+
+    R2B -->|"bronze.products"| PS
+    R2B -->|"bronze.orders"| OS
+    R2B -->|"bronze.order_items"| OIS
+
+    PS -->|"silver.products\nis_current=true"| DRG
+    OS -->|"silver.orders\ntotal_amount"| DRG
+    OIS -->|"silver.order_items\nline items"| DRG
+
+    PS -->|"silver.products\nname + dept"| PPG
+    OIS -->|"silver.order_items\nunits sold"| PPG
+
+    OS -->|"silver.orders\nfull history"| COG
+
+    style UTILS fill:#2c3e50,color:#fff
+```
+
 ---
 
 ## utils/delta_utils.py

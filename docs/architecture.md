@@ -4,28 +4,11 @@
 
 The system implements a **medallion architecture** (Bronze → Silver → Gold) on AWS. Raw e-commerce CSVs land in S3, are progressively refined through three Delta Lake layers, and are exposed for SQL analytics via Athena. All compute runs inside a private VPC with no internet egress.
 
-## Diagram
+## System Diagram
 
-```
-                         ┌──────────────────────────────────────────────────┐
-                         │                       AWS VPC                   │
-                         │  ┌──────────┐  ┌──────────┐  ┌──────────┐       │
-CSV Files ──► S3 Raw ───►│  │  Glue    │  │  Glue    │  │  Glue    │       │
-                         │  │ raw→brz  │  │ brz→slv  │  │ slv→gld  │       │
-                         │  └────┬─────┘  └────┬─────┘  └────┬─────┘       │
-                         │       │              │              │             │
-                         └───────┼──────────────┼──────────────┼────────────┘
-                                 │              │              │
-                            S3 Bronze      S3 Silver       S3 Gold
-                           (Delta tables) (Delta tables) (Delta tables)
-                                 │              │              │
-                         ┌───────▼──────────────▼──────────────▼───────────┐
-                         │         Glue Data Catalog + Lake Formation       │
-                         └───────────────────────┬──────────────────────────┘
-                                                 │
-                                          Amazon Athena
-                                     (SQL analytics queries)
-```
+![Architecture Diagram](images/architecture.svg)
+
+> All components run inside a private VPC across 3 Availability Zones with 5 VPC Endpoints for secure, resilient, and cost-effective operations.
 
 ## Medallion Layers
 
@@ -37,29 +20,47 @@ CSV Files ──► S3 Raw ───►│  │  Glue    │  │  Glue    │  
 
 ## Pipeline Flow
 
-```
-EventBridge (daily cron 06:00 UTC / S3 Object Created event)
-        │
-        ▼
-Step Functions Standard State Machine
-        │
-        ├─► IngestRawToBronze          ← raw_to_bronze Glue job
-        │        │ (on error) ──────────────────────────────────► NotifyFailure (SNS)
-        │
-        ├─► BronzeToSilverTransforms [PARALLEL]
-        │       ├─ ProductsSilver       ← products_silver Glue job
-        │       ├─ OrdersSilver         ← orders_silver Glue job
-        │       └─ OrderItemsSilver     ← order_items_silver Glue job
-        │
-        ├─► SilverToGoldTransforms [PARALLEL]
-        │       ├─ DailyRevenueGold     ← daily_revenue_gold Glue job
-        │       ├─ ProductPerformance   ← product_performance_gold Glue job
-        │       └─ CustomerOrders       ← customer_orders_gold Glue job
-        │
-        └─► NotifySuccess              ← SNS topic
+```mermaid
+flowchart TD
+    EB["EventBridge\nDaily cron 06:00 UTC  or  S3 Object Created"]
+    SFN["Step Functions\nExpress State Machine"]
+
+    EB --> SFN --> INGEST["IngestRawToBronze\nraw_to_bronze Glue job"]
+
+    INGEST -->|"success"| PAR1
+
+    subgraph PAR1["PARALLEL — Bronze → Silver"]
+        direction LR
+        PS["ProductsSilver"]
+        OS["OrdersSilver"]
+        OIS["OrderItemsSilver"]
+    end
+
+    PAR1 -->|"all succeed"| PAR2
+
+    subgraph PAR2["PARALLEL — Silver → Gold"]
+        direction LR
+        DRG["DailyRevenueGold"]
+        PPG["ProductPerformance"]
+        COG["CustomerOrders"]
+    end
+
+    PAR2 -->|"all succeed"| OK["NotifySuccess\nSNS Topic"]
+    OK --> DONE(["End"])
+
+    INGEST -->|"Catch"| FAIL["NotifyFailure\nSNS Topic"]
+    PAR1   -->|"Catch"| FAIL
+    PAR2   -->|"Catch"| FAIL
+    FAIL --> DONE
+
+    style OK   fill:#2d8a4e,color:#fff
+    style FAIL fill:#c0392b,color:#fff
+    style DONE fill:#2c3e50,color:#fff
+    style EB   fill:#7b2d8b,color:#fff
+    style SFN  fill:#e6811a,color:#fff
 ```
 
-Every stage has a `Catch` block routing failures to `NotifyFailure` (SNS). Retries use exponential backoff with configurable `HeartbeatSeconds` and `TimeoutSeconds`.
+> Every task state has exponential-backoff retries and a `Catch` block routing failures to `NotifyFailure` (SNS). Configurable `HeartbeatSeconds` and `TimeoutSeconds` per state.
 
 ## AWS Services
 

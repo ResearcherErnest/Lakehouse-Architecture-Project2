@@ -1,5 +1,50 @@
 # Monitoring & Cost
 
+## Observability Stack
+
+```mermaid
+flowchart TB
+    subgraph SOURCES["📡 Telemetry Sources"]
+        direction LR
+        GJ["Glue ETL Jobs\n7 jobs — continuous logging"]
+        GC["Glue Crawlers\n6 crawlers — run logs"]
+        SF["Step Functions\nExecution history + state transitions"]
+        S3M["S3 Buckets\nBucketSizeBytes per bucket"]
+        AM["Amazon Athena\nDataScannedInBytes per workgroup"]
+    end
+
+    subgraph CW["Amazon CloudWatch"]
+        subgraph LOGS["Log Groups — 30d retention · KMS encrypted"]
+            direction LR
+            LG1["/aws-glue/jobs/output"]
+            LG2["/aws-glue/jobs/error"]
+            LG3["/aws-glue/crawlers"]
+            LG4["/aws/states/ecom-lakehouse"]
+        end
+        subgraph ALARMS["Alarms — 9 total"]
+            direction LR
+            A1["Glue job failure\n×7 — one per ETL job"]
+            A2["SFN ExecutionsFailed >= 1"]
+            A3["Pipeline SLA breach\np99 > threshold"]
+        end
+        DASH["Dashboard — ecom-lakehouse-pipeline\n5 widgets · 7-day window\nExecutions · DPU hours · S3 storage · Athena scanned · Crawler times"]
+    end
+
+    SNS_T["SNS Topic\necom-lakehouse-pipeline-alerts"]
+    EMAIL["Email subscriber\nconfigured via sns_alert_email variable"]
+    BUD["AWS Budgets\n$500/month default\nAlerts at 80% and 100%"]
+
+    GJ & GC --> LOGS
+    SF --> LOGS
+    GJ & GC & SF & S3M & AM --> DASH
+    GJ & SF --> ALARMS
+    ALARMS -->|"threshold breach"| SNS_T
+    BUD -->|"budget alert"| SNS_T
+    SNS_T --> EMAIL
+```
+
+---
+
 ## CloudWatch Dashboard
 
 A single dashboard (`ecom-lakehouse-pipeline`) with five widgets:

@@ -1,5 +1,42 @@
 # Security
 
+## Defense-in-Depth Overview
+
+```mermaid
+flowchart TB
+    subgraph L1["🌐 Layer 1 — Network Isolation"]
+        VPC_N["Private VPC\nNo internet gateway · No NAT gateway"]
+        EP_N["5 VPC Endpoints\nAll AWS API traffic stays on AWS backbone"]
+        SG_N["Glue Security Group\nSelf-referencing ingress only"]
+    end
+
+    subgraph L2["🔑 Layer 2 — Identity & Access Control"]
+        IAM_N["4 Least-Privilege IAM Roles\nNo wildcard resource permissions"]
+        LF_N["Lake Formation\nTable-level and column-level permissions\nIndependent of S3 bucket policies"]
+    end
+
+    subgraph L3["🔐 Layer 3 — Encryption"]
+        KMS_N["KMS CMK\nAuto-rotation · 30d deletion window"]
+        TLS_N["TLS in Transit\naws:SecureTransport bucket policy\nDeny all non-HTTPS S3 requests"]
+        CSE_N["Client-Side Encryption\nGlue bookmarks + shuffle spill via KMS"]
+    end
+
+    subgraph L4["📦 Layer 4 — Data Protection"]
+        VERS_N["S3 Versioning\nRaw + lakehouse buckets"]
+        BLOCK_N["Public Access Block\nAll 4 S3 buckets"]
+        LIFE_N["Lifecycle Policies\nRaw: IA at 30d → Glacier at 90d"]
+    end
+
+    subgraph L5["📋 Layer 5 — Audit & Visibility"]
+        CWL_N["CloudWatch Logs\nAll Glue + Step Functions events\n30-day retention · KMS encrypted"]
+        TRAIL_N["AWS CloudTrail\nAll IAM · S3 · KMS · Glue API calls"]
+    end
+
+    L1 --> L2 --> L3 --> L4 --> L5
+```
+
+---
+
 ## Encryption at Rest
 
 | Resource | Mechanism |

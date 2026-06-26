@@ -6,6 +6,33 @@ GitHub Actions automates linting, testing, and deployment of Glue scripts on eve
 
 ## Workflow
 
+```mermaid
+flowchart LR
+    PUSH["git push\nto main"]
+
+    subgraph CI["GitHub Actions — ci.yml"]
+        direction TB
+        CO["actions/checkout@v4"]
+        PY["Set up Python 3.10"]
+        DEPS["pip install\nflake8 · pytest · pyspark · delta-spark"]
+        LINT["flake8 glue_scripts/\n--max-line-length=120"]
+        TEST["pytest tests/ -v\nPySpark local mode"]
+        SYNC["aws s3 sync glue_scripts/\n→ S3 assets bucket --delete"]
+    end
+
+    PUSH --> CO --> PY --> DEPS --> LINT
+    LINT -->|"pass"| TEST
+    LINT -->|"fail"| F1["Build Failed"]
+    TEST -->|"pass"| SYNC
+    TEST -->|"fail"| F2["Build Failed"]
+    SYNC --> OK["Scripts live in S3\nNext pipeline run picks up changes\nautomatically — no terraform apply needed"]
+
+    style F1 fill:#c0392b,color:#fff
+    style F2 fill:#c0392b,color:#fff
+    style OK fill:#2d8a4e,color:#fff
+    style PUSH fill:#2c3e50,color:#fff
+```
+
 `.github/workflows/ci.yml`
 
 ```yaml

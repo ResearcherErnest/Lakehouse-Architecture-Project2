@@ -2,6 +2,29 @@
 
 All infrastructure is provisioned through 10 modules wired together in `terraform/main.tf`. Remote state is stored in S3 with DynamoDB locking (`terraform/backend.tf`).
 
+## Module Dependency Graph
+
+```mermaid
+flowchart LR
+    KMS["kms\nCMK + key policy"]
+    VPC["vpc\nSubnets + endpoints + SG"]
+    STORAGE["storage\n4 S3 buckets + lifecycle"]
+    IAM["iam\n4 IAM roles"]
+    GLUE["glue\nCatalog DBs + crawlers + jobs"]
+    LF["lake_formation\nData lake location + grants"]
+    SFN["step_functions\nState machine + SNS + CWL"]
+    EB["eventbridge\nCron + S3-event rules"]
+    ATH["athena\nWorkgroups + named queries"]
+    MON["monitoring\nAlarms + dashboard + budgets"]
+
+    KMS --> STORAGE & GLUE & SFN & MON
+    VPC --> GLUE
+    STORAGE --> GLUE & LF & ATH
+    IAM --> GLUE & LF & SFN & EB
+    GLUE --> LF & SFN & MON
+    SFN --> EB & MON
+```
+
 ---
 
 ## vpc
@@ -15,6 +38,39 @@ Private subnets across 3 AZs (`10.0.1.0/24`, `10.0.2.0/24`, `10.0.3.0/24`). A Gl
 | KMS | Interface |
 | CloudWatch Logs | Interface |
 | Step Functions | Interface |
+
+```mermaid
+flowchart TB
+    subgraph VPC["VPC — 10.0.0.0/16"]
+        direction TB
+        subgraph AZ1["Availability Zone 1"]
+            SN1["Private Subnet\n10.0.1.0/24"]
+        end
+        subgraph AZ2["Availability Zone 2"]
+            SN2["Private Subnet\n10.0.2.0/24"]
+        end
+        subgraph AZ3["Availability Zone 3"]
+            SN3["Private Subnet\n10.0.3.0/24"]
+        end
+
+        SG["Glue Security Group\nSelf-referencing ingress only\nNo public inbound"]
+
+        EP_S3["VPC Endpoint — S3\nGateway type"]
+        EP_GLUE["VPC Endpoint — Glue\nInterface type"]
+        EP_KMS["VPC Endpoint — KMS\nInterface type"]
+        EP_CW["VPC Endpoint — CloudWatch Logs\nInterface type"]
+        EP_SFN["VPC Endpoint — Step Functions\nInterface type"]
+    end
+
+    SN1 & SN2 & SN3 --> SG
+    SG --> EP_S3 & EP_GLUE & EP_KMS & EP_CW & EP_SFN
+
+    EP_S3  -->|"private"| S3_T["Amazon S3\n4 buckets"]
+    EP_GLUE -->|"private"| GLUE_T["Glue API\nCatalog + job control"]
+    EP_KMS  -->|"private"| KMS_T["AWS KMS\nCMK operations"]
+    EP_CW   -->|"private"| CW_T["CloudWatch Logs\nJob + execution logs"]
+    EP_SFN  -->|"private"| SFN_T["Step Functions API\nExecution control"]
+```
 
 ---
 

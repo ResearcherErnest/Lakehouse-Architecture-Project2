@@ -6,6 +6,49 @@
 - AWS CLI configured with credentials that can create all services in this project
 - Python 3.10+ (to run or test Glue scripts locally)
 
+## Deployment Flow
+
+```mermaid
+sequenceDiagram
+    actor Dev as Developer
+    participant CLI as AWS CLI
+    participant TF as Terraform
+    participant S3_STATE as S3 State Bucket
+    participant DDB as DynamoDB Locks
+    participant INFRA as AWS Infrastructure
+    participant S3_A as S3 Glue Assets
+    participant S3_R as S3 Raw Bucket
+    participant EB as EventBridge
+    participant SFN as Step Functions
+
+    Note over Dev,SFN: Step 1 — Bootstrap Remote State
+    Dev->>CLI: aws s3api create-bucket
+    CLI->>S3_STATE: create tfstate bucket
+    Dev->>CLI: aws dynamodb create-table
+    CLI->>DDB: create lock table
+
+    Note over Dev,SFN: Step 2 — Upload Glue Scripts
+    Dev->>CLI: aws s3 cp glue_scripts/
+    CLI->>S3_A: upload PySpark scripts + utils.zip
+
+    Note over Dev,SFN: Step 3 — Terraform Apply
+    Dev->>TF: terraform init
+    TF->>S3_STATE: configure backend + acquire lock
+    Dev->>TF: terraform plan + apply
+    TF->>INFRA: provision 10 modules
+
+    Note over Dev,SFN: Step 4 — Upload Data and Trigger
+    Dev->>CLI: aws s3 cp data/
+    CLI->>S3_R: upload CSV files to /uploads
+    S3_R->>EB: S3 Object Created event
+    EB->>SFN: StartExecution
+
+    Note over Dev,SFN: Step 5 — Verify
+    Dev->>SFN: list-executions → SUCCEEDED
+    Dev->>CLI: glue get-job-runs → all SUCCEEDED
+    Dev->>CLI: athena query → Gold data visible
+```
+
 ---
 
 ## Step 1 — Bootstrap Remote State
